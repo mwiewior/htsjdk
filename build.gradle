@@ -86,6 +86,16 @@ task findScalaAndJavaTypes(type: Exec) {
     commandLine './scripts/checkScalaAndJavaFiles.sh'
 }
 
+
+task testWithDefaultReference(type: Test) {
+    description = "Run tests with a default reference File"
+    jvmArgs += '-Dsamjdk.reference_fasta=src/test/resources/htsjdk/samtools/cram/ce.fa'
+
+    tags {
+        include "defaultReference"
+    }
+}
+
 test {
     description = "Runs the unit tests other than the SRA tests"
 
@@ -100,10 +110,11 @@ test {
     tags {
         exclude "slow"
         exclude "broken"
+        exclude "defaultReference"
         if (System.env.CI == "false") exclude "sra"
         if (!OperatingSystem.current().isUnix()) exclude "unix"
     }
-} dependsOn findScalaAndJavaTypes
+} dependsOn findScalaAndJavaTypes, testWithDefaultReference
 
 task testSRA(type: Test) {
     description = "Run the SRA tests"
@@ -114,6 +125,8 @@ task testSRA(type: Test) {
         exclude "broken"
     }
 }
+
+
 
 task wrapper(type: Wrapper) {
     description = "Regenerate the gradle wrapper"

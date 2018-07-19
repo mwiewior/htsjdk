@@ -379,7 +379,7 @@ public class SAMFileWriterFactory implements Cloneable {
             return makeSAMWriter(header, presorted, outputFile);
         } else {
             if (!BAM_TYPE.hasValidFileExtension(filename)) {
-                log.warn("Unknown file extension, assuming BAM format when writing file: " + outputFile.getAbsolutePath());
+                log.info("Unknown file extension, assuming BAM format when writing file: " + outputFile.getAbsolutePath());
             }
             return makeBAMWriter(header, presorted, outputFile);
         }
@@ -473,36 +473,33 @@ public class SAMFileWriterFactory implements Cloneable {
             final File outputFile,
             final File referenceFasta) {
 
-        final CRAMReferenceSource referenceSource ;
+        final CRAMReferenceSource referenceSource;
         if (referenceFasta == null) {
-            log.warn("Reference fasta is not provided when writing CRAM file " + outputFile.getAbsolutePath());
+            log.info("Reference fasta is not provided when writing CRAM file " + outputFile.getAbsolutePath());
             referenceSource = ReferenceSource.getDefaultCRAMReferenceSource();
         } else {
             referenceSource = new ReferenceSource(referenceFasta);
         }
 
         OutputStream cramOS = null;
-        OutputStream indexOS = null ;
+        OutputStream indexOS = null;
 
         if (createIndex) {
             if (!IOUtil.isRegularPath(outputFile)) {
                 log.warn("Cannot create index for CRAM because output file is not a regular file: " + outputFile.getAbsolutePath());
-            }
-            else {
+            } else {
                 try {
-                    final File indexFile = new File(outputFile.getAbsolutePath() + BAMIndex.BAMIndexSuffix) ;
-                    indexOS = new FileOutputStream(indexFile) ;
-                }
-                catch (final IOException ioe) {
-                    throw new RuntimeIOException("Error creating index file for: " + outputFile.getAbsolutePath()+ BAMIndex.BAMIndexSuffix);
+                    final File indexFile = new File(outputFile.getAbsolutePath() + BAMIndex.BAMIndexSuffix);
+                    indexOS = new FileOutputStream(indexFile);
+                } catch (final IOException ioe) {
+                    throw new RuntimeIOException("Error creating index file for: " + outputFile.getAbsolutePath() + BAMIndex.BAMIndexSuffix);
                 }
             }
         }
 
         try {
             cramOS = IOUtil.maybeBufferOutputStream(new FileOutputStream(outputFile, false), bufferSize);
-        }
-        catch (final IOException ioe) {
+        } catch (final IOException ioe) {
             throw new RuntimeIOException("Error creating CRAM file: " + outputFile.getAbsolutePath());
         }
 
