@@ -40,8 +40,10 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
 
     private static final File TEST_DATA_DIR = new File("src/test/resources/htsjdk/samtools");
 
-    /** PIC-442Confirm that writing to a special file does not cause exception when writing additional files. */
-    @Test(groups={"unix"})
+    /**
+     * PIC-442Confirm that writing to a special file does not cause exception when writing additional files.
+     */
+    @Test(groups = {"unix"})
     public void specialFileWriterTest() {
         createSmallBam(new File("/dev/null"));
     }
@@ -61,84 +63,87 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         Assert.assertTrue(md5File.length() > 0);
     }
 
-    @Test(description="create a BAM in memory,  should start with GZipInputStream.GZIP_MAGIC")
-    public void inMemoryBam()  throws Exception  {
-    	ByteArrayOutputStream os=new ByteArrayOutputStream();
-    	createSmallBamToOutputStream(os,true);
-    	os.flush();
-    	os.close();
-    	byte blob[]=os.toByteArray();
+    @Test(description = "create a BAM in memory,  should start with GZipInputStream.GZIP_MAGIC")
+    public void inMemoryBam() throws Exception {
+        final ByteArrayOutputStream os = new ByteArrayOutputStream();
+        createSmallBamToOutputStream(os, true);
+        os.flush();
+        os.close();
+        final byte blob[] = os.toByteArray();
         Assert.assertTrue(blob.length > 2);
-        int head = ((int) blob[0] & 0xff) | ((blob[1] << 8 ) & 0xff00 );
+        final int head = ((int) blob[0] & 0xff) | ((blob[1] << 8) & 0xff00);
         Assert.assertTrue(java.util.zip.GZIPInputStream.GZIP_MAGIC == head);
     }
 
-    @Test(description="create a SAM in memory,  should start with '@HD'")
-    public void inMemorySam()  throws Exception  {
-    	ByteArrayOutputStream os=new ByteArrayOutputStream();
-    	createSmallBamToOutputStream(os,false);
-    	os.flush();
-    	os.close();
-    	String sam=new String(os.toByteArray());
+    @Test(description = "create a SAM in memory,  should start with '@HD'")
+    public void inMemorySam() throws Exception {
+        final ByteArrayOutputStream os = new ByteArrayOutputStream();
+        createSmallBamToOutputStream(os, false);
+        os.flush();
+        os.close();
+        final String sam = new String(os.toByteArray());
         Assert.assertFalse(sam.isEmpty());
-        Assert.assertTrue(sam.startsWith("@HD\t"),"SAM: bad prefix");
+        Assert.assertTrue(sam.startsWith("@HD\t"), "SAM: bad prefix");
     }
 
-    @Test(description="Read and then write SAM to verify header attribute ordering does not change depending on JVM version")
-    public void samRoundTrip()  throws Exception  {
+    @Test(description = "Read and then write SAM to verify header attribute ordering does not change depending on JVM version")
+    public void samRoundTrip() throws Exception {
         final File input = new File(TEST_DATA_DIR, "roundtrip.sam");
 
-        final SamReader reader = SamReaderFactory.makeDefault().open(input);
         final File outputFile = File.createTempFile("roundtrip-out", ".sam");
         outputFile.delete();
         outputFile.deleteOnExit();
-        FileOutputStream os = new FileOutputStream(outputFile);
         final SAMFileWriterFactory factory = new SAMFileWriterFactory();
-        final SAMFileWriter writer = factory.makeSAMWriter(reader.getFileHeader(), false, os);
-        for (SAMRecord rec : reader) {
-            writer.addAlignment(rec);
+        try(final FileOutputStream os = new FileOutputStream(outputFile);
+        final SamReader reader = SamReaderFactory.makeDefault().open(input);
+        final SAMFileWriter writer = factory.makeSAMWriter(reader.getFileHeader(), false, os)) {
+            for (SAMRecord rec : reader) {
+                writer.addAlignment(rec);
+            }
         }
-        writer.close();
-        os.close();
 
-        InputStream is = new FileInputStream(input);
-        String originalsam = IOUtil.readFully(is);
-        is.close();
+        final String originalsam;
+        try(final InputStream is = new FileInputStream(input)) {
+            originalsam = IOUtil.readFully(is);
+        }
 
-        is = new FileInputStream(outputFile);
-        String writtensam = IOUtil.readFully(is);
-        is.close();
+        final String writtenSam;
+        try(final InputStream is = new FileInputStream(outputFile)) {
+            writtenSam = IOUtil.readFully(is);
+        }
 
-        Assert.assertEquals(writtensam, originalsam);
+        Assert.assertEquals(writtenSam, originalsam);
     }
 
-    @Test(description="Write SAM records with null SAMFileHeader")
-    public void samNullHeaderRoundTrip()  throws Exception  {
+    @Test(description = "Write SAM records with null SAMFileHeader")
+    public void samNullHeaderRoundTrip() throws Exception {
         final File input = new File(TEST_DATA_DIR, "roundtrip.sam");
 
-        final SamReader reader = SamReaderFactory.makeDefault().open(input);
         final File outputFile = File.createTempFile("nullheader-out", ".sam");
         outputFile.delete();
         outputFile.deleteOnExit();
-        FileOutputStream os = new FileOutputStream(outputFile);
         final SAMFileWriterFactory factory = new SAMFileWriterFactory();
-        final SAMFileWriter writer = factory.makeSAMWriter(reader.getFileHeader(), false, os);
-        for (SAMRecord rec : reader) {
-            rec.setHeader(null);
-            writer.addAlignment(rec);
+        try(
+            final FileOutputStream os = new FileOutputStream(outputFile);
+            final SamReader reader = SamReaderFactory.makeDefault().open(input);
+            final SAMFileWriter writer = factory.makeSAMWriter(reader.getFileHeader(), false, os)) {
+            for (SAMRecord rec : reader) {
+                rec.setHeader(null);
+                writer.addAlignment(rec);
+            }
         }
-        writer.close();
-        os.close();
 
-        InputStream is = new FileInputStream(input);
-        String originalsam = IOUtil.readFully(is);
-        is.close();
+        final String originalsam;
+        try(final InputStream is = new FileInputStream(input)) {
+            originalsam = IOUtil.readFully(is);
+        }
 
-        is = new FileInputStream(outputFile);
-        String writtensam = IOUtil.readFully(is);
-        is.close();
+        final String writtenSam;
+        try(final InputStream is = new FileInputStream(outputFile)) {
+            writtenSam = IOUtil.readFully(is);
+        }
 
-        Assert.assertEquals(writtensam, originalsam);
+        Assert.assertEquals(writtenSam, originalsam);
     }
 
     private void createSmallBam(final File outputFile) {
@@ -149,39 +154,39 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         // index only created if coordinate sorted
         header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
         header.addSequence(new SAMSequenceRecord("chr1", 123));
-        final SAMFileWriter writer = factory.makeBAMWriter(header, false, outputFile);
-        fillSmallBam(writer);
-        writer.close();
+        try(final SAMFileWriter writer = factory.makeBAMWriter(header, false, outputFile)) {
+            fillSmallBam(writer);
+        }
     }
 
-
-   private void createSmallBamToOutputStream(final OutputStream outputStream,boolean binary) {
+    private void createSmallBamToOutputStream(final OutputStream outputStream, boolean binary) {
         final SAMFileWriterFactory factory = new SAMFileWriterFactory();
         factory.setCreateIndex(false);
         factory.setCreateMd5File(false);
         final SAMFileHeader header = new SAMFileHeader();
         // index only created if coordinate sorted
-       header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
-       header.addSequence(new SAMSequenceRecord("chr1", 123));
-       final SAMFileWriter writer = (binary ?
-               factory.makeBAMWriter(header, false, outputStream) :
-               factory.makeSAMWriter(header, false, outputStream)
-       );
-       fillSmallBam(writer);
-       writer.close();
-   }
-   
-   private int fillSmallBam(SAMFileWriter writer) {
-       final SAMRecordSetBuilder builder = new SAMRecordSetBuilder();
-       builder.addUnmappedFragment("HiMom!");
-       int numRecs = builder.getRecords().size();
-       for (final SAMRecord rec: builder.getRecords()) {
-           writer.addAlignment(rec);
-       }
-       return numRecs;
+        header.setSortOrder(SAMFileHeader.SortOrder.coordinate);
+        header.addSequence(new SAMSequenceRecord("chr1", 123));
+
+        try(final SAMFileWriter writer = (binary ?
+                factory.makeBAMWriter(header, false, outputStream) :
+                factory.makeSAMWriter(header, false, outputStream)
+        )) {
+            fillSmallBam(writer);
+        }
     }
 
-    private File prepareOutputFileWithSuffix(String suffix) throws IOException {
+    private int fillSmallBam(final SAMFileWriter writer) {
+        final SAMRecordSetBuilder builder = new SAMRecordSetBuilder();
+        builder.addUnmappedFragment("HiMom!");
+        int numRecs = builder.getRecords().size();
+        for (final SAMRecord rec : builder.getRecords()) {
+            writer.addAlignment(rec);
+        }
+        return numRecs;
+    }
+
+    private File prepareOutputFileWithSuffix(final String suffix) throws IOException {
         final File outputFile = File.createTempFile("tmp.", suffix);
         outputFile.delete();
         outputFile.deleteOnExit();
@@ -189,7 +194,7 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
     }
 
     //  Create a writer factory that creates and index and md5 file and set the header to coord sorted
-    private SAMFileWriterFactory createWriterFactoryWithOptions(SAMFileHeader header) {
+    private SAMFileWriterFactory createWriterFactoryWithOptions(final SAMFileHeader header) {
         final SAMFileWriterFactory factory = new SAMFileWriterFactory();
         factory.setCreateIndex(true);
         factory.setCreateMd5File(true);
@@ -200,17 +205,17 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         return factory;
     }
 
-    private void verifyWriterOutput(File outputFile, ReferenceSource refSource, int nRecs, boolean verifySupplementalFiles) throws IOException {
+    private void verifyWriterOutput(final File outputFile, final ReferenceSource refSource, final int nRecs, final boolean verifySupplementalFiles) throws IOException {
         if (outputFile.getName().endsWith(SamReader.Type.CRAM_TYPE.fileExtension())) {
             Assert.assertTrue(SamStreams.isCRAMFile(new BufferedInputStream(new SeekableFileStream(outputFile))));
         }
 
         if (outputFile.getName().endsWith(SamReader.Type.BAM_TYPE.fileExtension())) {
-            Assert.assertTrue(SamStreams.isBAMFile(new BufferedInputStream (new SeekableFileStream(outputFile))));
+            Assert.assertTrue(SamStreams.isBAMFile(new BufferedInputStream(new SeekableFileStream(outputFile))));
         }
 
         if (outputFile.getName().endsWith(SamReader.Type.SAM_TYPE.fileExtension())) {
-            byte[] head = new byte[3] ;
+            byte[] head = new byte[3];
             new DataInputStream(new FileInputStream(outputFile)).readFully(head);
             Assert.assertEquals("@HD".getBytes(), head);
         }
@@ -224,40 +229,41 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
             Assert.assertTrue(md5File.length() > 0);
         }
 
-        SamReaderFactory factory =  SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT);
+        SamReaderFactory factory = SamReaderFactory.makeDefault().validationStringency(ValidationStringency.LENIENT);
         if (refSource != null) {
             factory.referenceSource(refSource);
         }
-        SamReader reader = factory.open(outputFile);
-        SAMRecordIterator it = reader.iterator();
-        int count = 0;
-        for (; it.hasNext(); it.next()) {
-            count++;
-        }
+        try (final SamReader reader = factory.open(outputFile)) {
 
-        Assert.assertTrue(count == nRecs);
+            final SAMRecordIterator it = reader.iterator();
+            int count = 0;
+            for (; it.hasNext(); it.next()) {
+                count++;
+            }
+            Assert.assertTrue(count == nRecs);
+        }
     }
 
-    @DataProvider(name="bamOrCramWriter")
+    @DataProvider(name = "bamOrCramWriter")
     public Object[][] bamOrCramWriter() {
-        return new Object[][] {
-                { SamReader.Type.SAM_TYPE.fileExtension(), },
-                { SamReader.Type.BAM_TYPE.fileExtension(), },
-                { SamReader.Type.CRAM_TYPE.fileExtension() }
+        return new Object[][]{
+                {SamReader.Type.SAM_TYPE.fileExtension(),},
+                {SamReader.Type.BAM_TYPE.fileExtension(),},
+                {SamReader.Type.CRAM_TYPE.fileExtension()}
         };
     }
 
     @Test(dataProvider = "bamOrCramWriter")
-    public void testMakeWriter(String extension) throws Exception {
+    public void testMakeWriter(final String extension) throws Exception {
         final File outputFile = prepareOutputFileWithSuffix("." + extension);
-        System.out.println(outputFile.getAbsolutePath());
         final SAMFileHeader header = new SAMFileHeader();
         final SAMFileWriterFactory factory = createWriterFactoryWithOptions(header);
         final File referenceFile = new File(TEST_DATA_DIR, "hg19mini.fasta");
 
-        final SAMFileWriter samWriter = factory.makeWriter(header, false, outputFile, referenceFile);
-        int nRecs = fillSmallBam(samWriter);
-        samWriter.close();
+        final int nRecs;
+        try (final SAMFileWriter samWriter = factory.makeWriter(header, false, outputFile, referenceFile)) {
+            nRecs = fillSmallBam(samWriter);
+        }
 
         verifyWriterOutput(outputFile, new ReferenceSource(referenceFile), nRecs, !SamReader.Type.SAM_TYPE.fileExtension().equals(extension));
     }
@@ -269,9 +275,10 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         final SAMFileWriterFactory factory = createWriterFactoryWithOptions(header);
         final File referenceFile = new File(TEST_DATA_DIR, "hg19mini.fasta");
 
-        final SAMFileWriter samWriter = factory.makeCRAMWriter(header, false, outputFile, referenceFile);
-        int nRecs = fillSmallBam(samWriter);
-        samWriter.close();
+        final int nRecs;
+        try (final SAMFileWriter samWriter = factory.makeCRAMWriter(header, false, outputFile, referenceFile)) {
+            nRecs = fillSmallBam(samWriter);
+        }
 
         verifyWriterOutput(outputFile, new ReferenceSource(referenceFile), nRecs, true);
     }
@@ -284,9 +291,10 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         final File referenceFile = new File(TEST_DATA_DIR, "hg19mini.fasta");
 
         // Note: does not honor factory settings for CREATE_MD5 or CREATE_INDEX.
-        final SAMFileWriter samWriter = factory.makeCRAMWriter(header, new FileOutputStream(outputFile), referenceFile);
-        int nRecs = fillSmallBam(samWriter);
-        samWriter.close();
+        final int nRecs;
+        try (final SAMFileWriter samWriter = factory.makeCRAMWriter(header, new FileOutputStream(outputFile), referenceFile)) {
+            nRecs = fillSmallBam(samWriter);
+        }
 
         verifyWriterOutput(outputFile, new ReferenceSource(referenceFile), nRecs, false);
     }
@@ -299,9 +307,10 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         final File referenceFile = new File(TEST_DATA_DIR, "hg19mini.fasta");
 
         // Defaults to preSorted==true
-        final SAMFileWriter samWriter = factory.makeCRAMWriter(header, outputFile, referenceFile);
-        int nRecs = fillSmallBam(samWriter);
-        samWriter.close();
+        final int nRecs;
+        try (final SAMFileWriter samWriter = factory.makeCRAMWriter(header, outputFile, referenceFile)) {
+            nRecs = fillSmallBam(samWriter);
+        }
 
         verifyWriterOutput(outputFile, new ReferenceSource(referenceFile), nRecs, true);
     }
@@ -312,39 +321,41 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
 
         final File outputFile = prepareOutputFileWithSuffix(BamFileIoUtils.BAM_FILE_EXTENSION);
         final SAMFileHeader header = new SAMFileHeader();
-        final SAMFileWriterFactory factory = createWriterFactoryWithOptions(header);
         final File referenceFile = new File(TEST_DATA_DIR, "hg19mini.fasta");
 
-        SAMFileWriter writer = builder.makeWriter(header, false, outputFile, referenceFile);
-        Assert.assertEquals(writer instanceof AsyncSAMFileWriter, Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS, "testAsync default");
+        try (final SAMFileWriter writer = builder.makeWriter(header, false, outputFile, referenceFile)) {
+            Assert.assertEquals(writer instanceof AsyncSAMFileWriter, Defaults.USE_ASYNC_IO_WRITE_FOR_SAMTOOLS, "testAsync default");
+        }
 
-        writer = builder.setUseAsyncIo(true).makeWriter(header, false, outputFile, referenceFile);
-        Assert.assertTrue(writer instanceof AsyncSAMFileWriter, "testAsync option=set");
+        try (final SAMFileWriter writer = builder.setUseAsyncIo(true).makeWriter(header, false, outputFile, referenceFile)) {
+            Assert.assertTrue(writer instanceof AsyncSAMFileWriter, "testAsync option=set");
+        }
 
-        writer = builder.setUseAsyncIo(false).makeWriter(header, false, outputFile, referenceFile);
-        Assert.assertFalse(writer instanceof AsyncSAMFileWriter, "testAsync option=unset");
+        try (final SAMFileWriter writer = builder.setUseAsyncIo(false).makeWriter(header, false, outputFile, referenceFile)) {
+            Assert.assertFalse(writer instanceof AsyncSAMFileWriter, "testAsync option=unset");
+        }
     }
 
     @Test
     public void testMakeWriterForSamExtension() throws IOException {
         final File tmpFile = File.createTempFile("testMakeWriterForSamExtension", "." + SAM_TYPE.fileExtension());
         tmpFile.deleteOnExit();
-        final SAMFileWriter samFileWriter = new SAMFileWriterFactory().makeWriter(new SAMFileHeader(), true, tmpFile, null);
-        samFileWriter.close();
-
-        final FileInputStream fis = new FileInputStream(tmpFile);
-        for (byte b : "@HD\tVN:".getBytes()) {
-            Assert.assertEquals((byte) (fis.read() & 0xFF), b);
+        try (final SAMFileWriter samFileWriter = new SAMFileWriterFactory().makeWriter(new SAMFileHeader(), true, tmpFile, null)) {
         }
-        fis.close();
+
+        try (final FileInputStream fis = new FileInputStream(tmpFile)) {
+            for (byte b : "@HD\tVN:".getBytes()) {
+                Assert.assertEquals((byte) (fis.read() & 0xFF), b);
+            }
+        }
     }
 
     @Test
     public void testMakeWriterForBamExtension() throws IOException {
         final File tmpFile = File.createTempFile("testMakeWriterForBamExtension", "." + BAM_TYPE.fileExtension());
         tmpFile.deleteOnExit();
-        final SAMFileWriter samFileWriter = new SAMFileWriterFactory().makeWriter(new SAMFileHeader(), true, tmpFile, null);
-        samFileWriter.close();
+        try (final SAMFileWriter samFileWriter = new SAMFileWriterFactory().makeWriter(new SAMFileHeader(), true, tmpFile, null)) {
+        }
 
         Assert.assertTrue(SamStreams.isBAMFile(new BufferedInputStream(new SeekableFileStream(tmpFile))));
     }
@@ -361,8 +372,7 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         Assert.assertTrue(SamStreams.isCRAMFile(new BufferedInputStream(new SeekableFileStream(cramTmpFile))));
     }
 
-
-    @Test(groups="defaultReference")
+    @Test(groups = "defaultReference")
     public void testMakeWriterForCramExtensionNoReference() throws IOException {
 
         final File cramTmpFile = File.createTempFile("testMakeWriterForCramExtension", "." + CRAM_TYPE.fileExtension());
@@ -374,7 +384,6 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
 
         Assert.assertTrue(SamStreams.isCRAMFile(new BufferedInputStream(new SeekableFileStream(cramTmpFile))));
     }
-
 
     @Test
     public void testMakeWriterForNoExtension() throws IOException {
@@ -397,7 +406,7 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
         tmpFile.deleteOnExit();
         final SAMFileWriter samFileWriter = new SAMFileWriterFactory().makeWriter(new SAMFileHeader(), true, tmpFile, null);
         samFileWriter.close();
-        Assert.assertTrue(SamStreams.isBAMFile(new BufferedInputStream (new SeekableFileStream(tmpFile))));
+        Assert.assertTrue(SamStreams.isBAMFile(new BufferedInputStream(new SeekableFileStream(tmpFile))));
     }
 
     @Test
@@ -409,5 +418,4 @@ public class SAMFileWriterFactoryTest extends HtsjdkTest {
 
         Assert.assertTrue(SamStreams.isBAMFile(new BufferedInputStream(new SeekableFileStream(tmpFile))));
     }
-
 }
